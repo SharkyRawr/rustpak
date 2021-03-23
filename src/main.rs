@@ -1,9 +1,9 @@
-mod pak;
-use pak::{Pak};
+mod lib;
+use lib::{Pak};
 
 fn main() {
     
-    let pak = Pak::new("extras.pak".to_string()).unwrap();
+    let pak = Pak::from_file("extras.pak".to_string()).unwrap();
     println!("Pak file found: {}", pak);
 
     println!("Listing all files in {}:", pak.pak_path);

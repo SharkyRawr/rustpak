@@ -11,6 +11,14 @@ pub struct PakHeader {
 }
 
 impl PakHeader {
+    pub fn new() -> PakHeader {
+        PakHeader{
+            id: String::new(),
+            offset: 0,
+            size: 0
+        }
+    }
+
     pub fn from_u8(buf: &Vec<u8>) -> PakHeader {
         PakHeader{
             id: String::from_utf8((&buf[0..4]).to_vec()).unwrap(),
@@ -63,7 +71,15 @@ pub struct Pak {
 }
 
 impl Pak {
-    pub fn new(path: String) -> Result<Pak, Box<dyn Error>> {
+    pub fn new() -> Pak {
+        Pak{
+            pak_path: String::new(),
+            header: PakHeader::new(),
+            files: Vec::new(),
+            buf: Vec::new()
+        }
+    }
+    pub fn from_file(path: String) -> Result<Pak, Box<dyn Error>> {
         let bytes = std::fs::read(path.to_string())?;
         let pakheader = PakHeader::from_u8(&bytes);
         let num_files = pakheader.size / 64;
