@@ -58,7 +58,10 @@ fn main() {
     if let Some(matches) = matches.subcommand_matches("extract") {
         let pakfile = matches.value_of("pakfile").unwrap();
         let path = matches.value_of("path").unwrap();
-        let outfile = matches.value_of("outfile").unwrap();
+        let mut outfile: &str = path;
+        if let Some(option_outfile) = matches.value_of("outfile") {
+            outfile = option_outfile;
+        }
 
         match extract_file_from_pak_to_path(pakfile, path, outfile) {
             Ok(_) => {
