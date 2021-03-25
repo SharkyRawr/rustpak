@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use rustpak::{Pak, PakFileEntry, PakFileError};
-    use std::{error::Error, rc::Rc};
+    use std::{error::Error};
 
     #[test]
     fn pak_from_file() -> Result<(), Box<dyn Error>> {
