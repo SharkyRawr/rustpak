@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use rustpak::{Pak, PakFileEntry, PakFileError};
-    use std::{error::Error};
+    use std::error::Error;
 
     #[test]
     fn pak_from_file() -> Result<(), Box<dyn Error>> {
@@ -34,5 +34,22 @@ mod tests {
                 msg: "Failed".to_string(),
             }))
         }
+    }
+
+    #[test]
+    fn pak_delete_file() -> Result<(), Box<dyn Error>> {
+        let mut pak = Pak::new();
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, vec![b'H']))
+            .unwrap();
+        pak.remove_file("test.txt")
+    }
+
+    #[test]
+    #[should_panic]
+    fn pak_delete_file_nonexisting() -> () {
+        let mut pak = Pak::new();
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, vec![b'H']))
+            .unwrap();
+        pak.remove_file("doesnotexist.txt").unwrap();
     }
 }

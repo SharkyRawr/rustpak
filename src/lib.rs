@@ -140,6 +140,18 @@ impl Pak {
             }
         }
     }
+
+    #[allow(dead_code)]
+    pub fn remove_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
+        if let Some(p) = self.files.iter().position(|p| p.name.eq(filename)) {
+            self.files.remove(p);
+            Ok(())
+        } else {
+            Err(Box::new(PakFileError {
+                msg: "file entry not found".to_string(),
+            }))
+        }
+    }
 }
 
 impl std::fmt::Display for Pak {

@@ -11,6 +11,7 @@ fn main() {
         .version("0.1")
         .author("Sophie Luna Schumann <me@sophie.lgbt>")
         .about("Quake/Half-Life Pak file manipulation utility")
+        .setting(clap::AppSettings::ArgRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("list")
                 .about("List files inside .pak")
@@ -61,9 +62,7 @@ fn main() {
                 eprintln!("Pak file error: {}", e)
             }
         }
-    }
-
-    if let Some(matches) = matches.subcommand_matches("extract") {
+    } else if let Some(matches) = matches.subcommand_matches("extract") {
         let pakfile = matches.value_of("pakfile").unwrap();
         let path = matches.value_of("path").unwrap();
         let mut outfile: &str = path;
