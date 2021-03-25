@@ -73,6 +73,7 @@ impl PakFileEntry {
         Ok(path.to_str().unwrap().to_string())
     }
 
+    #[allow(dead_code)]
     pub fn new(name: String, offset: u32, data: Vec<u8>) -> PakFileEntry {
         PakFileEntry {
             name: name,
@@ -91,6 +92,7 @@ pub struct Pak {
 }
 
 impl Pak {
+    #[allow(dead_code)]
     pub fn new() -> Pak {
         Pak {
             pak_path: String::new(),
@@ -126,9 +128,10 @@ impl Pak {
         })
     }
 
+    #[allow(dead_code)]
     pub fn add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
         match self.files.iter().find(|f| f.name.eq(&file.name)) {
-            Some(f) => Err(Box::new(PakFileError {
+            Some(_) => Err(Box::new(PakFileError {
                 msg: "File already exists".to_string(),
             })),
             None => {
