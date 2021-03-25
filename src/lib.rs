@@ -63,6 +63,15 @@ impl PakFileEntry {
         let data: &Vec<u8> = self.data.borrow();
         std::fs::write(path, data)
     }
+
+    pub fn new(name: String, offset: u32, data: Vec<u8>) -> PakFileEntry {
+        PakFileEntry{
+            name: name,
+            offset: offset,
+            size: data.len() as u32,
+            data: Rc::new(data.to_vec())
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -112,6 +121,18 @@ impl Pak {
             buf: bytes,
         })
     }
+
+    pub fn add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
+        match self.files.iter().find(|f| f.name.eq(&file.name)) {
+            Some(f) => {
+                Err(Box::new(PakFileError{msg: "File already exists".to_string()}))
+            }
+            None => {
+                self.files.push(file);
+                Ok(self)
+            }
+        }
+    }
 }
 
 impl std::fmt::Display for Pak {
@@ -123,4 +144,19 @@ impl std::fmt::Display for Pak {
             self.files.len()
         )
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct PakFileError {
+    pub msg: String
+}
+
+impl std::fmt::Display for PakFileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.msg)
+    }
+}
+
+impl Error for PakFileError {
+    
 }
