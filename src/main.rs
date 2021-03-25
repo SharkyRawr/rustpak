@@ -41,6 +41,14 @@ fn main() {
                         .help("Path to save to")
                         .index(3)
                         .required(false),
+                )
+                .arg(
+                    Arg::with_name("recursive")
+                        .help("Recreate the directory structure -- This can potentially overwrite a lot of files you care about!!")
+                        .short("r")
+                        .long("recursive")
+                        .required(false)
+                        .takes_value(false),
                 ),
         )
         .get_matches();
@@ -63,9 +71,14 @@ fn main() {
             outfile = option_outfile;
         }
 
-        match extract_file_from_pak_to_path(pakfile, path, outfile) {
-            Ok(_) => {
-                eprintln!("File extracted!")
+        let mut recursive = false;
+        if matches.is_present("recursive") {
+            recursive = true;
+        }
+
+        match extract_file_from_pak_to_path(pakfile, path, outfile, recursive) {
+            Ok(finalpath) => {
+                eprintln!("Extracted: '{}' to '{}'", path, finalpath)
             }
             Err(e) => {
                 eprintln!("Pak file error: {}", e)
@@ -78,11 +91,12 @@ fn extract_file_from_pak_to_path(
     pakfile: &str,
     path: &str,
     outfile: &str,
-) -> Result<(), Box<dyn Error>> {
+    recursive: bool,
+) -> Result<String, Box<dyn Error>> {
     let pak = Pak::from_file(pakfile.to_string())?;
     match pak.files.iter().find(|pf| pf.name.eq(path)) {
-        Some(pakfile) => match pakfile.save_to(outfile.to_string()) {
-            Ok(_) => Ok(()),
+        Some(pakfile) => match pakfile.save_to(outfile.to_string(), recursive) {
+            Ok(path) => Ok(path),
             Err(e) => {
                 panic!("Pak error! {}", e)
             }

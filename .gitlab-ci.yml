@@ -5,6 +5,7 @@ rust-latest:
   stage: build
   image: rust:latest
   script:
+    - cargo clippy -- -W clippy::pedantic
     - cargo build --verbose
     - cargo test --verbose
 

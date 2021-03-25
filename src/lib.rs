@@ -1,5 +1,5 @@
 extern crate byteorder;
-use std::{borrow::Borrow, error::Error, rc::Rc};
+use std::{borrow::Borrow, error::Error, fs, path};
 
 use byteorder::{ByteOrder, LittleEndian};
 
@@ -33,7 +33,7 @@ pub struct PakFileEntry {
     pub name: String, // 56 byte null-terminated string	Includes path. Example: "maps/e1m1.bsp".
     pub offset: u32, // The offset (from the beginning of the pak file) to the beginning of this file's contents.
     pub size: u32,   // The size of this file.
-    data: Rc<Vec<u8>>,
+    data: Vec<u8>,
 }
 
 impl PakFileEntry {
@@ -55,21 +55,30 @@ impl PakFileEntry {
                 .to_string(),
             offset: offset,
             size: size,
-            data: Rc::new((&file_buf[offset as usize..(offset + size) as usize]).to_vec()),
+            data: (file_buf[offset as usize..(offset + size) as usize]).to_vec(),
         }
     }
 
-    pub fn save_to(&self, path: String) -> Result<(), std::io::Error> {
+    pub fn save_to(&self, path: String, with_full_path: bool) -> Result<String, std::io::Error> {
         let data: &Vec<u8> = self.data.borrow();
-        std::fs::write(path, data)
+        let mut path = path::Path::new(&path);
+
+        if with_full_path {
+            fs::create_dir_all(path.parent().unwrap())?;
+        } else {
+            path = path::Path::new(path.file_name().unwrap().to_str().unwrap())
+        }
+
+        std::fs::write(path, data)?;
+        Ok(path.to_str().unwrap().to_string())
     }
 
     pub fn new(name: String, offset: u32, data: Vec<u8>) -> PakFileEntry {
-        PakFileEntry{
+        PakFileEntry {
             name: name,
             offset: offset,
             size: data.len() as u32,
-            data: Rc::new(data.to_vec())
+            data: data.to_vec(),
         }
     }
 }
@@ -79,7 +88,6 @@ pub struct Pak {
     pub pak_path: String,
     pub header: PakHeader,
     pub files: Vec<PakFileEntry>,
-    buf: Vec<u8>,
 }
 
 impl Pak {
@@ -88,15 +96,12 @@ impl Pak {
             pak_path: String::new(),
             header: PakHeader::new(),
             files: Vec::new(),
-            buf: Vec::new(),
         }
     }
     pub fn from_file(path: String) -> Result<Pak, Box<dyn Error>> {
         let bytes = std::fs::read(path.to_string())?;
         let pakheader = PakHeader::from_u8(&bytes);
         let num_files = pakheader.size / 64;
-        //println!("{:?}", pakheader);
-        //println!("Pak with {} files.", num_files);
 
         let file_table_offset = pakheader.offset;
         let mut my_offset: u32 = 0;
@@ -118,15 +123,14 @@ impl Pak {
             pak_path: path.to_string(),
             header: pakheader,
             files: pakfiles,
-            buf: bytes,
         })
     }
 
     pub fn add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
         match self.files.iter().find(|f| f.name.eq(&file.name)) {
-            Some(f) => {
-                Err(Box::new(PakFileError{msg: "File already exists".to_string()}))
-            }
+            Some(f) => Err(Box::new(PakFileError {
+                msg: "File already exists".to_string(),
+            })),
             None => {
                 self.files.push(file);
                 Ok(self)
@@ -148,7 +152,7 @@ impl std::fmt::Display for Pak {
 
 #[derive(Debug, Clone)]
 pub struct PakFileError {
-    pub msg: String
+    pub msg: String,
 }
 
 impl std::fmt::Display for PakFileError {
@@ -157,6 +161,4 @@ impl std::fmt::Display for PakFileError {
     }
 }
 
-impl Error for PakFileError {
-    
-}
+impl Error for PakFileError {}
