@@ -52,4 +52,12 @@ mod tests {
             .unwrap();
         pak.remove_file("doesnotexist.txt").unwrap();
     }
+
+    #[test]
+    fn pak_save() -> Result<(), Box<dyn Error>> {
+        let mut pak = Pak::new();
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 12+64, "Hello World".as_bytes().to_vec()))
+            .unwrap();
+        pak.save("test.pak")
+    }
 }

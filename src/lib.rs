@@ -1,19 +1,22 @@
 extern crate byteorder;
-use std::{borrow::Borrow, error::Error, fs, path};
+use std::{borrow::Borrow, error::Error, fs::{self, File}, io::{self, Seek, SeekFrom, Write}, path};
 
-use byteorder::{ByteOrder, LittleEndian};
+use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
 
 #[derive(Debug)]
 pub struct PakHeader {
-    pub id: String,  // Should be "PACK" (not null-terminated).
-    pub offset: u32, // Index to the beginning of the file table.
-    pub size: u32,   // Size of the file table.
+    /// Should be "PACK" (not null-terminated).
+    pub id: String,
+    /// Index to the beginning of the file table.
+    pub offset: u32,
+    /// Size of the file table.
+    pub size: u32,   
 }
 
 impl PakHeader {
     pub fn new() -> PakHeader {
         PakHeader {
-            id: String::new(),
+            id: "PACK".to_string(),
             offset: 0,
             size: 0,
         }
@@ -25,6 +28,13 @@ impl PakHeader {
             offset: LittleEndian::read_u32(&buf[4..8]),
             size: LittleEndian::read_u32(&buf[8..12]),
         }
+    }
+
+    pub fn write_to<W: io::Write>(&self, mut writer: W) -> Result<(), Box<dyn Error>> {
+        writer.write(self.id.as_bytes())?;
+        writer.write_u32::<LittleEndian>(self.offset)?;
+        writer.write_u32::<LittleEndian>(self.size)?;
+        Ok(())
     }
 }
 
@@ -81,6 +91,19 @@ impl PakFileEntry {
             size: data.len() as u32,
             data: data.to_vec(),
         }
+    }
+
+    pub fn write_to<W: io::Write>(&self, mut writer: W) -> Result<(), Box<dyn Error>> {
+        let mut buf = self.name.as_bytes().to_vec();
+        //buf.fill_with(self.name.as_bytes());
+        while buf.len() < 56 {
+            buf.push(0 as u8);
+        }
+        writer.write(buf.as_slice())?;
+        writer.write_u32::<LittleEndian>(self.offset)?;
+        writer.write_u32::<LittleEndian>(self.size)?;
+
+        Ok(())
     }
 }
 
@@ -151,6 +174,26 @@ impl Pak {
                 msg: "file entry not found".to_string(),
             }))
         }
+    }
+
+    pub fn save(&self, filename: &str) ->  Result<(), Box<dyn Error>> {
+        let mut hdr = PakHeader::new();
+        hdr.offset = 12;
+        hdr.size = (self.files.len() * 64) as u32;
+        
+        let mut f = File::create(filename)?;
+        hdr.write_to(&f)?;
+
+        for file in self.files.iter() {
+            file.write_to(&f)?;
+        }
+
+        for file in self.files.iter() {
+            f.seek(SeekFrom::Start(file.offset as u64))?;
+            io::Write::write(&mut f, file.data.as_slice())?;
+        }
+
+        Ok(())
     }
 }
 
