@@ -1,5 +1,5 @@
 extern crate byteorder;
-use std::{borrow::Borrow, error::Error, fs::{self, File}, io::{self, Seek, SeekFrom, Write}, path};
+use std::{borrow::Borrow, error::Error, fs::{self, File}, io::{self, Seek, SeekFrom}, path};
 
 use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
 
@@ -30,8 +30,9 @@ impl PakHeader {
         }
     }
 
+    #[allow(dead_code)]
     pub fn write_to<W: io::Write>(&self, mut writer: W) -> Result<(), Box<dyn Error>> {
-        writer.write(self.id.as_bytes())?;
+        writer.write_all(self.id.as_bytes())?;
         writer.write_u32::<LittleEndian>(self.offset)?;
         writer.write_u32::<LittleEndian>(self.size)?;
         Ok(())
@@ -93,13 +94,14 @@ impl PakFileEntry {
         }
     }
 
+    #[allow(dead_code)]
     pub fn write_to<W: io::Write>(&self, mut writer: W) -> Result<(), Box<dyn Error>> {
         let mut buf = self.name.as_bytes().to_vec();
         //buf.fill_with(self.name.as_bytes());
         while buf.len() < 56 {
             buf.push(0 as u8);
         }
-        writer.write(buf.as_slice())?;
+        writer.write_all(buf.as_slice())?;
         writer.write_u32::<LittleEndian>(self.offset)?;
         writer.write_u32::<LittleEndian>(self.size)?;
 
@@ -176,6 +178,7 @@ impl Pak {
         }
     }
 
+    #[allow(dead_code)]
     pub fn save(&self, filename: &str) ->  Result<(), Box<dyn Error>> {
         let mut hdr = PakHeader::new();
         hdr.offset = 12;
