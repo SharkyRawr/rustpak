@@ -4,6 +4,7 @@ use std::{borrow::Borrow, error::Error, fs::{self, File}, io::{self, Seek, SeekF
 use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct PakHeader {
     /// Should be "PACK" (not null-terminated).
     pub id: String,
@@ -40,6 +41,7 @@ impl PakHeader {
 }
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct PakFileEntry {
     pub name: String, // 56 byte null-terminated string	Includes path. Example: "maps/e1m1.bsp".
     pub offset: u32, // The offset (from the beginning of the pak file) to the beginning of this file's contents.
@@ -110,22 +112,26 @@ impl PakFileEntry {
 }
 
 #[derive(Debug)]
-pub struct Pak {
-    pub pak_path: String,
+#[repr(C)]
+pub struct Pak<'a> {
+    pub pak_path: &'a str,
     pub header: PakHeader,
     pub files: Vec<PakFileEntry>,
 }
 
-impl Pak {
+impl<'a> Pak<'a> {
     #[allow(dead_code)]
-    pub fn new() -> Pak {
+    #[no_mangle]
+    pub extern "C" fn new() -> Pak<'a> {
         Pak {
-            pak_path: String::new(),
+            pak_path: "",
             header: PakHeader::new(),
             files: Vec::new(),
         }
     }
-    pub fn from_file(path: String) -> Result<Pak, Box<dyn Error>> {
+
+    #[no_mangle]
+    pub extern "C" fn from_file(path: &'a str) -> Result<Pak, Box<dyn Error>> {
         let bytes = std::fs::read(path.to_string())?;
         let pakheader = PakHeader::from_u8(&bytes);
         let num_files = pakheader.size / 64;
@@ -147,17 +153,18 @@ impl Pak {
         }
 
         Ok(Pak {
-            pak_path: path.to_string(),
+            pak_path: path,
             header: pakheader,
             files: pakfiles,
         })
     }
 
     #[allow(dead_code)]
-    pub fn add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
+    #[no_mangle]
+    pub extern "C" fn  add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak<'a>, Box<dyn Error>> {
         match self.files.iter().find(|f| f.name.eq(&file.name)) {
             Some(_) => Err(Box::new(PakFileError {
-                msg: "File already exists".to_string(),
+                msg: "File already exists",
             })),
             None => {
                 self.files.push(file);
@@ -167,19 +174,21 @@ impl Pak {
     }
 
     #[allow(dead_code)]
-    pub fn remove_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
+    #[no_mangle]
+    pub extern "C" fn  remove_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
         if let Some(p) = self.files.iter().position(|p| p.name.eq(filename)) {
             self.files.remove(p);
             Ok(())
         } else {
             Err(Box::new(PakFileError {
-                msg: "file entry not found".to_string(),
+                msg: "file entry not found",
             }))
         }
     }
 
     #[allow(dead_code)]
-    pub fn save(&self, filename: &str) ->  Result<(), Box<dyn Error>> {
+    #[no_mangle]
+    pub extern "C" fn  save(&self, filename: &str) ->  Result<(), Box<dyn Error>> {
         let mut hdr = PakHeader::new();
         hdr.offset = 12;
         hdr.size = (self.files.len() * 64) as u32;
@@ -200,7 +209,7 @@ impl Pak {
     }
 }
 
-impl std::fmt::Display for Pak {
+impl<'a> std::fmt::Display for Pak<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -212,14 +221,15 @@ impl std::fmt::Display for Pak {
 }
 
 #[derive(Debug, Clone)]
-pub struct PakFileError {
-    pub msg: String,
+#[repr(C)]
+pub struct PakFileError<'a> {
+    pub msg: &'a str,
 }
 
-impl std::fmt::Display for PakFileError {
+impl<'a> std::fmt::Display for PakFileError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.msg)
     }
 }
 
-impl Error for PakFileError {}
+impl<'a> Error for PakFileError<'a> {}

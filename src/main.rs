@@ -92,7 +92,7 @@ fn extract_file_from_pak_to_path(
     outfile: &str,
     recursive: bool,
 ) -> Result<String, Box<dyn Error>> {
-    let pak = Pak::from_file(pakfile.to_string())?;
+    let pak = Pak::from_file(pakfile)?;
     match pak.files.iter().find(|pf| pf.name.eq(path)) {
         Some(pakfile) => match pakfile.save_to(outfile.to_string(), recursive) {
             Ok(path) => Ok(path),
@@ -107,7 +107,7 @@ fn extract_file_from_pak_to_path(
 }
 
 fn list_pak_file(pakfile: &str) -> Result<(), Box<dyn Error>> {
-    let pak = Pak::from_file(pakfile.to_string())?;
+    let pak = Pak::from_file(pakfile)?;
     pak.files.iter().for_each(|i| println!("{}", i.name));
     Ok(())
 }
