@@ -5,6 +5,10 @@ authors = ["Sophie Luna Schumann <me@luna.vg>"]
 edition = "2018"
 description = "Rust library/tool to manage GoldSrc .pak files"
 license = "MIT"
+license-file = "LICENSE"
+homepage = "https://github.com/SharkyRawr/rustpak"
+repository = "https://github.com/SharkyRawr/rustpak"
+keywords = ["gamedev", "goldsrc"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
