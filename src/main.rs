@@ -108,6 +108,6 @@ fn extract_file_from_pak_to_path(
 
 fn list_pak_file(pakfile: &str) -> Result<(), Box<dyn Error>> {
     let pak = Pak::from_file(pakfile)?;
-    pak.files.iter().for_each(|i| println!("{}", i.name));
+    pak.files.iter().for_each(|i| println!("{} - {} bytes", i.name, i.size));
     Ok(())
 }

@@ -2,9 +2,8 @@
 name = "rustpak"
 version = "0.1.0"
 authors = ["Sophie Luna Schumann <me@luna.vg>"]
-edition = "2018"
+edition = "2021"
 description = "Rust library/tool to manage GoldSrc .pak files"
-license = "MIT"
 license-file = "LICENSE"
 homepage = "https://github.com/SharkyRawr/rustpak"
 repository = "https://github.com/SharkyRawr/rustpak"
@@ -15,6 +14,3 @@ keywords = ["gamedev", "goldsrc"]
 [dependencies]
 byteorder = "1.4"
 clap = "2.33"
-
-[lib]
-crate-type = ["staticlib"]

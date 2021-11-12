@@ -112,7 +112,6 @@ impl PakFileEntry {
 }
 
 #[derive(Debug)]
-#[repr(C)]
 pub struct Pak<'a> {
     pub pak_path: &'a str,
     pub header: PakHeader,
@@ -122,7 +121,7 @@ pub struct Pak<'a> {
 impl<'a> Pak<'a> {
     #[allow(dead_code)]
     #[no_mangle]
-    pub extern "C" fn new() -> Pak<'a> {
+    pub fn new() -> Pak<'a> {
         Pak {
             pak_path: "",
             header: PakHeader::new(),
@@ -131,7 +130,7 @@ impl<'a> Pak<'a> {
     }
 
     #[no_mangle]
-    pub extern "C" fn from_file(path: &'a str) -> Result<Pak, Box<dyn Error>> {
+    pub fn from_file(path: &'a str) -> Result<Pak, Box<dyn Error>> {
         let bytes = std::fs::read(path.to_string())?;
         let pakheader = PakHeader::from_u8(&bytes);
         let num_files = pakheader.size / 64;
@@ -161,7 +160,7 @@ impl<'a> Pak<'a> {
 
     #[allow(dead_code)]
     #[no_mangle]
-    pub extern "C" fn  add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak<'a>, Box<dyn Error>> {
+    pub fn  add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak<'a>, Box<dyn Error>> {
         match self.files.iter().find(|f| f.name.eq(&file.name)) {
             Some(_) => Err(Box::new(PakFileError {
                 msg: "File already exists",
@@ -175,7 +174,7 @@ impl<'a> Pak<'a> {
 
     #[allow(dead_code)]
     #[no_mangle]
-    pub extern "C" fn  remove_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
+    pub fn  remove_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
         if let Some(p) = self.files.iter().position(|p| p.name.eq(filename)) {
             self.files.remove(p);
             Ok(())
@@ -188,7 +187,7 @@ impl<'a> Pak<'a> {
 
     #[allow(dead_code)]
     #[no_mangle]
-    pub extern "C" fn  save(&self, filename: &str) ->  Result<(), Box<dyn Error>> {
+    pub fn  save(&self, filename: &str) ->  Result<(), Box<dyn Error>> {
         let mut hdr = PakHeader::new();
         hdr.offset = 12;
         hdr.size = (self.files.len() * 64) as u32;
