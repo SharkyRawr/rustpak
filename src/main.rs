@@ -1,5 +1,5 @@
 mod lib;
-use std::error::Error;
+use std::{error::Error};
 
 use lib::Pak;
 
@@ -52,22 +52,38 @@ fn main() {
                         .takes_value(false),
                 ),
         )
+        .subcommand(
+        SubCommand::with_name("append")
+            .about("Append files to Pak")
+            .arg(
+                Arg::with_name("pakfile")
+                    .help("Path to .pak file")
+                    .index(1)
+                    .required(true),
+            )
+            .arg(
+                Arg::with_name("path")
+                    .help("File to append")
+                    .index(2)
+                    .required(true),
+            ),
+        )
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("list") {
         let pakfile = matches.value_of("pakfile").unwrap();
-        match list_pak_file(pakfile) {
+        match list_pak_file(pakfile.to_string()) {
             Ok(_) => {}
             Err(e) => {
                 eprintln!("Pak file error: {}", e)
             }
         }
     } else if let Some(matches) = matches.subcommand_matches("extract") {
-        let pakfile = matches.value_of("pakfile").unwrap();
-        let path = matches.value_of("path").unwrap();
-        let mut outfile: &str = path;
+        let pakfile = matches.value_of("pakfile").unwrap().to_string();
+        let path = matches.value_of("path").unwrap().to_string();
+        let mut outfile = path.to_string();
         if let Some(option_outfile) = matches.value_of("outfile") {
-            outfile = option_outfile;
+            outfile = option_outfile.clone().to_string();
         }
 
         let mut recursive = false;
@@ -75,25 +91,30 @@ fn main() {
             recursive = true;
         }
 
-        match extract_file_from_pak_to_path(pakfile, path, outfile, recursive) {
+        match extract_file_from_pak_to_path(pakfile, path.clone(), outfile, recursive) {
             Ok(finalpath) => {
-                eprintln!("Extracted: '{}' to '{}'", path, finalpath)
+                eprintln!("Extracted: '{}' to '{}'", &path, finalpath)
             }
             Err(e) => {
                 eprintln!("Pak file error: {}", e)
             }
         }
+    } else if let Some(matches) = matches.subcommand_matches("append") {
+        add_file_to_pak(
+            matches.value_of("pakfile").unwrap().to_string(), 
+            matches.value_of("path").unwrap().to_string())
+            .unwrap();
     }
 }
 
 fn extract_file_from_pak_to_path(
-    pakfile: &str,
-    path: &str,
-    outfile: &str,
+    pakfile: String,
+    path: String,
+    outfile: String,
     recursive: bool,
 ) -> Result<String, Box<dyn Error>> {
     let pak = Pak::from_file(pakfile)?;
-    match pak.files.iter().find(|pf| pf.name.eq(path)) {
+    match pak.files.iter().find(|pf| pf.name.eq(&path)) {
         Some(pakfile) => match pakfile.save_to(outfile.to_string(), recursive) {
             Ok(path) => Ok(path),
             Err(e) => {
@@ -106,8 +127,14 @@ fn extract_file_from_pak_to_path(
     }
 }
 
-fn list_pak_file(pakfile: &str) -> Result<(), Box<dyn Error>> {
+fn list_pak_file(pakfile: String) -> Result<(), Box<dyn Error>> {
     let pak = Pak::from_file(pakfile)?;
     pak.files.iter().for_each(|i| println!("{} - {} bytes", i.name, i.size));
     Ok(())
+}
+
+fn add_file_to_pak(pakpath: String, filepath: String) -> Result<(), Box<dyn Error>> {
+    let mut pak = Pak::from_file(pakpath.clone())?;
+    pak.append_file(filepath.clone(), filepath)?;
+    pak.save(pakpath)
 }

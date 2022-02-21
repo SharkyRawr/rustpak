@@ -41,7 +41,7 @@ mod tests {
         let mut pak = Pak::new();
         pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, vec![b'H']))
             .unwrap();
-        pak.remove_file("test.txt")
+        pak.remove_file("test.txt".to_string())
     }
 
     #[test]
@@ -50,7 +50,7 @@ mod tests {
         let mut pak = Pak::new();
         pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, vec![b'H']))
             .unwrap();
-        pak.remove_file("doesnotexist.txt").unwrap();
+        pak.remove_file("doesnotexist.txt".to_string()).unwrap();
     }
 
     #[test]
@@ -58,6 +58,6 @@ mod tests {
         let mut pak = Pak::new();
         pak.add_file(PakFileEntry::new("test.txt".to_string(), 12+64, "Hello World".as_bytes().to_vec()))
             .unwrap();
-        pak.save("test.pak")
+        pak.save("test.pak".to_string())
     }
 }
