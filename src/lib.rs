@@ -1,5 +1,11 @@
 extern crate byteorder;
-use std::{borrow::Borrow, error::Error, fs::{self, File}, io::{self, Read, Seek, SeekFrom}, path};
+use std::{
+    borrow::Borrow,
+    error::Error,
+    fs::{self, File},
+    io::{self, Read, Seek, SeekFrom},
+    path,
+};
 
 use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
 
@@ -11,7 +17,7 @@ pub struct PakHeader {
     /// Index to the beginning of the file table.
     pub offset: u32,
     /// Size of the file table.
-    pub size: u32,   
+    pub size: u32,
 }
 
 impl PakHeader {
@@ -160,7 +166,7 @@ impl Pak {
 
     #[allow(dead_code)]
     #[no_mangle]
-    pub fn  add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
+    pub fn add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
         match self.files.iter().find(|f| f.name.eq(&file.name)) {
             Some(_) => Err(Box::new(PakFileError {
                 msg: "File already exists".to_string(),
@@ -174,7 +180,7 @@ impl Pak {
 
     #[allow(dead_code)]
     #[no_mangle]
-    pub fn  remove_file(&mut self, filename: String) -> Result<(), Box<dyn Error>> {
+    pub fn remove_file(&mut self, filename: String) -> Result<(), Box<dyn Error>> {
         if let Some(p) = self.files.iter().position(|p| p.name.eq(&filename)) {
             self.files.remove(p);
             Ok(())
@@ -191,7 +197,7 @@ impl Pak {
         let mut hdr = PakHeader::new();
         hdr.offset = 12;
         hdr.size = (self.files.len() * 64) as u32;
-        
+
         let mut f = File::create(filename)?;
         hdr.write_to(&f)?;
 
@@ -207,12 +213,17 @@ impl Pak {
         Ok(())
     }
 
-    pub fn append_file(&mut self, infilepath: String, pakfilepath: String) -> Result<(), Box<dyn Error>> {
+    pub fn append_file(
+        &mut self,
+        infilepath: String,
+        pakfilepath: String,
+    ) -> Result<(), Box<dyn Error>> {
         let newfilepath = path::Path::new(&infilepath);
-        if ! newfilepath.exists() {
-            return Err(Box::new(PakFileError{ msg: "File does not exist!".to_string() }))
+        if !newfilepath.exists() {
+            return Err(Box::new(PakFileError {
+                msg: "File does not exist!".to_string(),
+            }));
         }
-
 
         fn get_last_offset(path: String) -> u32 {
             let f = File::open(path).unwrap();
@@ -220,7 +231,7 @@ impl Pak {
         }
 
         let last_offset = get_last_offset(self.pak_path.clone());
-        
+
         fn get_file_data(path: String) -> Vec<u8> {
             let mut f = File::open(path).unwrap();
             let mut vec: Vec<u8> = Vec::new();
@@ -229,14 +240,14 @@ impl Pak {
             buf.to_vec()
         }
         let data = get_file_data(infilepath);
-        
+
         let fe = PakFileEntry::new(pakfilepath.to_string(), last_offset, data);
         self.add_file(fe).unwrap();
         Ok(())
     }
 }
 
-impl std::fmt::Display for Pak { 
+impl std::fmt::Display for Pak {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
