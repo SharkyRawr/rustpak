@@ -20,6 +20,12 @@ pub struct PakHeader {
     pub size: u32,
 }
 
+impl Default for PakHeader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PakHeader {
     pub fn new() -> PakHeader {
         PakHeader {
@@ -29,9 +35,9 @@ impl PakHeader {
         }
     }
 
-    pub fn from_u8(buf: &Vec<u8>) -> PakHeader {
+    pub fn from_u8(buf: &[u8]) -> PakHeader {
         PakHeader {
-            id: String::from_utf8((&buf[0..4]).to_vec()).unwrap(),
+            id: String::from_utf8(buf[0..4].to_vec()).unwrap(),
             offset: LittleEndian::read_u32(&buf[4..8]),
             size: LittleEndian::read_u32(&buf[8..12]),
         }
@@ -56,8 +62,8 @@ pub struct PakFileEntry {
 }
 
 impl PakFileEntry {
-    pub fn from_u8(header_buf: &Vec<u8>, file_buf: &Vec<u8>) -> PakFileEntry {
-        let namebuf = (&header_buf[0..56]).to_vec();
+    pub fn from_u8(header_buf: &[u8], file_buf: &[u8]) -> PakFileEntry {
+        let namebuf = header_buf[0..56].to_vec();
 
         let nul_range_end = namebuf
             .iter()
@@ -68,12 +74,12 @@ impl PakFileEntry {
         let size = LittleEndian::read_u32(&header_buf[60..64]);
 
         PakFileEntry {
-            name: String::from_utf8((&header_buf[0..nul_range_end]).to_vec())
+            name: String::from_utf8(header_buf[0..nul_range_end].to_vec())
                 .unwrap()
                 .trim()
                 .to_string(),
-            offset: offset,
-            size: size,
+            offset,
+            size,
             data: (file_buf[offset as usize..(offset + size) as usize]).to_vec(),
         }
     }
@@ -95,8 +101,8 @@ impl PakFileEntry {
     #[allow(dead_code)]
     pub fn new(name: String, offset: u32, data: Vec<u8>) -> PakFileEntry {
         PakFileEntry {
-            name: name,
-            offset: offset,
+            name,
+            offset,
             size: data.len() as u32,
             data: data.to_vec(),
         }
@@ -107,7 +113,7 @@ impl PakFileEntry {
         let mut buf = self.name.as_bytes().to_vec();
         //buf.fill_with(self.name.as_bytes());
         while buf.len() < 56 {
-            buf.push(0 as u8);
+            buf.push(0_u8);
         }
         writer.write_all(buf.as_slice())?;
         writer.write_u32::<LittleEndian>(self.offset)?;
@@ -124,6 +130,12 @@ pub struct Pak {
     pub files: Vec<PakFileEntry>,
 }
 
+impl Default for Pak {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Pak {
     #[allow(dead_code)]
     #[no_mangle]
@@ -137,7 +149,7 @@ impl Pak {
 
     #[no_mangle]
     pub fn from_file(path: String) -> Result<Pak, Box<dyn Error>> {
-        let bytes = std::fs::read(path.to_string())?;
+        let bytes = std::fs::read(&path)?;
         let pakheader = PakHeader::from_u8(&bytes);
         let num_files = pakheader.size / 64;
 
@@ -147,9 +159,8 @@ impl Pak {
 
         for _i in 0..num_files {
             let file_entry = PakFileEntry::from_u8(
-                &(&bytes[(file_table_offset + my_offset) as usize
-                    ..(file_table_offset + my_offset + 64) as usize])
-                    .to_vec(),
+                &bytes[(file_table_offset + my_offset) as usize
+                    ..(file_table_offset + my_offset + 64) as usize],
                 &bytes,
             );
             pakfiles.push(file_entry);
