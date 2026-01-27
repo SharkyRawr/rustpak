@@ -1,3 +1,26 @@
+//! Rustpak - A library for reading and writing GoldSrc .pak archive files
+//!
+//! This library provides functionality to work with .pak files used by
+//! Quake, Half-Life, and other GoldSrc engine games. The .pak format
+//! is a simple archive format containing a header, a file table, and file data.
+//!
+//! # Basic Usage
+//!
+//! ```no_run
+//! use rustpak::Pak;
+//!
+//! // Load an existing pak file
+//! let pak = Pak::from_file("data.pak".to_string()).unwrap();
+//!
+//! // List all files
+//! for file in &pak.files {
+//!     println!("{} - {} bytes", file.name, file.size);
+//! }
+//!
+//! // Save modifications
+//! pak.save("data_modified.pak".to_string()).unwrap();
+//! ```
+
 extern crate byteorder;
 use std::{
     borrow::Borrow,
@@ -9,6 +32,10 @@ use std::{
 
 use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
 
+/// Header structure for .pak archive files
+///
+/// The header is always 12 bytes and contains magic identifier,
+/// offset to the file table, and size of the file table.
 #[derive(Debug)]
 #[repr(C)]
 pub struct PakHeader {
@@ -27,6 +54,9 @@ impl Default for PakHeader {
 }
 
 impl PakHeader {
+    /// Creates a new PakHeader with default values
+    ///
+    /// Returns a header with "PACK" magic and zeroed offset/size.
     pub fn new() -> PakHeader {
         PakHeader {
             id: "PACK".to_string(),
@@ -35,6 +65,15 @@ impl PakHeader {
         }
     }
 
+    /// Parses a PakHeader from a byte slice
+    ///
+    /// # Arguments
+    ///
+    /// * `buf` - A byte slice containing at least 12 bytes of header data
+    ///
+    /// # Panics
+    ///
+    /// Panics if the buffer is too short or contains invalid UTF-8 for the magic bytes
     pub fn from_u8(buf: &[u8]) -> PakHeader {
         PakHeader {
             id: String::from_utf8(buf[0..4].to_vec()).unwrap(),
@@ -43,6 +82,15 @@ impl PakHeader {
         }
     }
 
+    /// Writes the header to a writer
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Any type implementing `std::io::Write`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing to the writer fails
     #[allow(dead_code)]
     pub fn write_to<W: io::Write>(&self, mut writer: W) -> Result<(), Box<dyn Error>> {
         writer.write_all(self.id.as_bytes())?;
@@ -52,16 +100,36 @@ impl PakHeader {
     }
 }
 
+/// Represents a single file entry within a .pak archive
+///
+/// Each file entry consists of metadata (name, offset, size) and the
+/// actual file data. Entries in the file table are always 64 bytes,
+/// with the name padded to 56 bytes with null terminators.
 #[derive(Debug)]
 #[repr(C)]
 pub struct PakFileEntry {
-    pub name: String, // 56 byte null-terminated string	Includes path. Example: "maps/e1m1.bsp".
-    pub offset: u32, // The offset (from the beginning of the pak file) to the beginning of this file's contents.
-    pub size: u32,   // The size of this file.
+    /// 56 byte null-terminated string including path.
+    /// Example: "maps/e1m1.bsp"
+    pub name: String,
+    /// The offset from the beginning of the pak file to this file's contents
+    pub offset: u32,
+    /// The size of this file in bytes
+    pub size: u32,
+    /// The raw file data
     data: Vec<u8>,
 }
 
 impl PakFileEntry {
+    /// Parses a PakFileEntry from header buffer and full file data
+    ///
+    /// # Arguments
+    ///
+    /// * `header_buf` - 64 bytes containing the file entry metadata
+    /// * `file_buf` - Full .pak file data to extract file contents from
+    ///
+    /// # Panics
+    ///
+    /// Panics if buffer sizes are insufficient or data is out of bounds
     pub fn from_u8(header_buf: &[u8], file_buf: &[u8]) -> PakFileEntry {
         let namebuf = header_buf[0..56].to_vec();
 
@@ -84,6 +152,17 @@ impl PakFileEntry {
         }
     }
 
+    /// Extracts this file's contents to disk
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Destination path for the extracted file
+    /// * `with_full_path` - If true, creates directory structure from path;
+    ///   if false, only uses filename
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if file operations fail
     pub fn save_to(&self, path: String, with_full_path: bool) -> Result<String, std::io::Error> {
         let data: &Vec<u8> = self.data.borrow();
         let mut path = path::Path::new(&path);
@@ -98,10 +177,18 @@ impl PakFileEntry {
         Ok(path.to_str().unwrap().to_string())
     }
 
+    /// Returns a reference to the file's raw data
     pub fn get_data(&self) -> &Vec<u8> {
         &self.data
     }
 
+    /// Creates a new PakFileEntry with the given parameters
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The file name/path (will be stored in file table)
+    /// * `offset` - Byte offset within the .pak file where data will be stored
+    /// * `data` - The actual file contents
     #[allow(dead_code)]
     pub fn new(name: String, offset: u32, data: Vec<u8>) -> PakFileEntry {
         PakFileEntry {
@@ -112,6 +199,18 @@ impl PakFileEntry {
         }
     }
 
+    /// Writes the file entry metadata (64 bytes) to a writer
+    ///
+    /// The name is padded with null bytes to 56 bytes, followed by
+    /// offset (4 bytes) and size (4 bytes).
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Any type implementing `std::io::Write`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if writing fails
     #[allow(dead_code)]
     pub fn write_to<W: io::Write>(&self, mut writer: W) -> Result<(), Box<dyn Error>> {
         let mut buf = self.name.as_bytes().to_vec();
@@ -127,10 +226,17 @@ impl PakFileEntry {
     }
 }
 
+/// Represents a complete .pak archive file
+///
+/// Contains the archive header and collection of file entries.
+/// Provides methods for reading, writing, and manipulating archives.
 #[derive(Debug)]
 pub struct Pak {
+    /// Path to the .pak file on disk (if loaded from file)
     pub pak_path: String,
+    /// Archive header containing PACK magic, offset, and size
     pub header: PakHeader,
+    /// All files contained in the archive
     pub files: Vec<PakFileEntry>,
 }
 
@@ -141,6 +247,9 @@ impl Default for Pak {
 }
 
 impl Pak {
+    /// Creates a new empty Pak archive
+    ///
+    /// Returns a Pak with empty path, default header, and no files.
     #[allow(dead_code)]
     #[no_mangle]
     pub fn new() -> Pak {
@@ -151,6 +260,16 @@ impl Pak {
         }
     }
 
+    /// Loads a .pak archive from disk
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to the .pak file to load
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file doesn't exist, can't be read,
+    /// or has an invalid format
     #[no_mangle]
     pub fn from_file(path: String) -> Result<Pak, Box<dyn Error>> {
         let bytes = std::fs::read(&path)?;
@@ -179,6 +298,15 @@ impl Pak {
         })
     }
 
+    /// Adds a file entry to the archive
+    ///
+    /// # Arguments
+    ///
+    /// * `file` - The PakFileEntry to add
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a file with the same name already exists
     #[allow(dead_code)]
     #[no_mangle]
     pub fn add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
@@ -193,6 +321,15 @@ impl Pak {
         }
     }
 
+    /// Removes a file from the archive by name
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - Name of the file to remove
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file is not found
     #[allow(dead_code)]
     #[no_mangle]
     pub fn remove_file(&mut self, filename: String) -> Result<(), Box<dyn Error>> {
@@ -206,6 +343,20 @@ impl Pak {
         }
     }
 
+    /// Saves the archive to a file
+    ///
+    /// Writes the archive in standard .pak format:
+    /// - 12-byte header
+    /// - File table entries (64 bytes each)
+    /// - File data at specified offsets
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - Path where the .pak file should be saved
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if file creation or writing fails
     #[allow(dead_code)]
     #[no_mangle]
     pub fn save(&self, filename: String) -> Result<(), Box<dyn Error>> {
@@ -228,6 +379,20 @@ impl Pak {
         Ok(())
     }
 
+    /// Appends a file from disk to the archive
+    ///
+    /// Reads a file from disk and adds it to the archive with the
+    /// path specified in `pakfilepath`.
+    ///
+    /// # Arguments
+    ///
+    /// * `infilepath` - Path to the file on disk to read
+    /// * `pakfilepath` - Path/name to store within the .pak archive
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input file doesn't exist or can't be read,
+    /// or if a file with that name already exists in the archive
     pub fn append_file(
         &mut self,
         infilepath: String,
@@ -273,9 +438,13 @@ impl std::fmt::Display for Pak {
     }
 }
 
+/// Error type for .pak file operations
+///
+/// Used to report errors during file loading, saving, and manipulation.
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct PakFileError {
+    /// Error message describing what went wrong
     pub msg: String,
 }
 
