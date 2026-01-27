@@ -13,4 +13,4 @@ keywords = ["gamedev", "goldsrc"]
 
 [dependencies]
 byteorder = "1.4"
-clap = "4.5.54"
+clap = { version = "4.5.54", features = ["derive"] }

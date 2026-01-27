@@ -2,103 +2,74 @@ use std::error::Error;
 
 use rustpak::Pak;
 
-use clap::{Arg, Command};
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(version = "0.1")]
+#[command(author = "Sophie Luna Schumann <me@sophie.lgbt>")]
+#[command(about = "Quake/Half-Life Pak file manipulation utility")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    List {
+        #[arg(help = "Path to .pak file")]
+        pakfile: String,
+    },
+    Extract {
+        #[arg(help = "Path to .pak file")]
+        pakfile: String,
+        #[arg(help = "Filename to extract")]
+        path: String,
+        #[arg(help = "Path to save to")]
+        outfile: Option<String>,
+        #[arg(
+            short,
+            long,
+            help = "Recreate the directory structure -- This can potentially overwrite a lot of files you care about!!"
+        )]
+        recursive: bool,
+    },
+    Append {
+        #[arg(help = "Path to .pak file")]
+        pakfile: String,
+        #[arg(help = "File to append")]
+        path: String,
+    },
+}
 
 fn main() {
-    let matches = Command::new("Pak")
-        .version("0.1")
-        .author("Sophie Luna Schumann <me@sophie.lgbt>")
-        .about("Quake/Half-Life Pak file manipulation utility")
-        .arg_required_else_help(true)
-        .subcommand(
-            Command::new("list")
-                .about("List files inside .pak")
-                .arg(
-                    Arg::new("pakfile")
-                        .help("Path to .pak file")
-                        .index(1)
-                        .required(true),
-                ),
-        )
-        .subcommand(
-            Command::new("extract")
-                .about("Extract files from Pak")
-                .arg(
-                    Arg::new("pakfile")
-                        .help("Path to .pak file")
-                        .index(1)
-                        .required(true),
-                )
-                .arg(
-                    Arg::new("path")
-                        .help("Filename to extract")
-                        .index(2)
-                        .required(true),
-                )
-                .arg(
-                    Arg::new("outfile")
-                        .help("Path to save to")
-                        .index(3)
-                        .required(false),
-                )
-                .arg(
-                    Arg::new("recursive")
-                        .help("Recreate the directory structure -- This can potentially overwrite a lot of files you care about!!")
-                        .short('r')
-                        .long("recursive")
-                        .action(clap::ArgAction::SetTrue),
-                ),
-        )
-        .subcommand(
-        Command::new("append")
-            .about("Append files to Pak")
-            .arg(
-                Arg::new("pakfile")
-                    .help("Path to .pak file")
-                    .index(1)
-                    .required(true),
-            )
-            .arg(
-                Arg::new("path")
-                    .help("File to append")
-                    .index(2)
-                    .required(true),
-            ),
-        )
-        .get_matches();
+    let cli = Cli::parse();
 
-    if let Some(matches) = matches.subcommand_matches("list") {
-        let pakfile = matches.get_one::<String>("pakfile").unwrap();
-        match list_pak_file(pakfile.to_string()) {
+    match cli.command {
+        Commands::List { pakfile } => match list_pak_file(pakfile) {
             Ok(_) => {}
             Err(e) => {
                 eprintln!("Pak file error: {}", e)
             }
-        }
-    } else if let Some(matches) = matches.subcommand_matches("extract") {
-        let pakfile = matches.get_one::<String>("pakfile").unwrap().to_string();
-        let path = matches.get_one::<String>("path").unwrap().to_string();
-        let mut outfile = path.to_string();
-        if let Some(option_outfile) = matches.get_one::<String>("outfile") {
-            outfile = option_outfile.clone().to_string();
-        }
-
-        let recursive = matches.get_flag("recursive");
-
-        match extract_file_from_pak_to_path(pakfile, path.clone(), outfile, recursive) {
-            Ok(finalpath) => {
-                eprintln!("Extracted: '{}' to '{}'", &path, finalpath)
-            }
-            Err(e) => {
-                eprintln!("Pak file error: {}", e)
+        },
+        Commands::Extract {
+            pakfile,
+            path,
+            outfile,
+            recursive,
+        } => {
+            let outfile = outfile.unwrap_or_else(|| path.clone());
+            match extract_file_from_pak_to_path(pakfile, path.clone(), outfile, recursive) {
+                Ok(finalpath) => {
+                    eprintln!("Extracted: '{}' to '{}'", &path, finalpath)
+                }
+                Err(e) => {
+                    eprintln!("Pak file error: {}", e)
+                }
             }
         }
-    } else if let Some(matches) = matches.subcommand_matches("append") {
-        add_file_to_pak(
-            matches.get_one::<String>("pakfile").unwrap().to_string(),
-            matches.get_one::<String>("path").unwrap().to_string(),
-        )
-        .unwrap();
+        Commands::Append { pakfile, path } => {
+            add_file_to_pak(pakfile, path).unwrap();
+        }
     }
 }
 
