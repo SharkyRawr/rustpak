@@ -1,6 +1,6 @@
 [package]
 name = "rustpak"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Sophie Luna Schumann <me@luna.vg>"]
 edition = "2021"
 description = "Rust library/tool to manage GoldSrc .pak files"
