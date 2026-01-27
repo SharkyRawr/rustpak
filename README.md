@@ -1,7 +1,7 @@
 # rustpak
 
 [![Crates.io](https://img.shields.io/crates/v/rustpak)](https://crates.io/crates/rustpak)
-[![Documentation](https://img.shields.io/docs/rs/rustpak)](https://docs.rs/rustpak)
+[![Documentation](https://img.shields.io/docsrs/rustpak)](https://docs.rs/rustpak)
 [![License](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-blue.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 Rust library and CLI tool for reading and writing GoldSrc `.pak` archive files.
