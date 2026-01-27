@@ -1,0 +1,87 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'rustpak'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=rustpak"
+        ],
+        "filter": {
+          "name": "rustpak",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'rustpak'",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=rustpak",
+          "--package=rustpak"
+        ],
+        "filter": {
+          "name": "rustpak",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "append",
+        "test.pak",
+        "LICENSE"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'rustpak'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=rustpak",
+          "--package=rustpak"
+        ],
+        "filter": {
+          "name": "rustpak",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'pak_test'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--test=pak_test",
+          "--package=rustpak"
+        ],
+        "filter": {
+          "name": "pak_test",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
