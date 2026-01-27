@@ -98,6 +98,10 @@ impl PakFileEntry {
         Ok(path.to_str().unwrap().to_string())
     }
 
+    pub fn get_data(&self) -> &Vec<u8> {
+        &self.data
+    }
+
     #[allow(dead_code)]
     pub fn new(name: String, offset: u32, data: Vec<u8>) -> PakFileEntry {
         PakFileEntry {

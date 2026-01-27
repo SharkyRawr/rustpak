@@ -56,8 +56,42 @@ mod tests {
     #[test]
     fn pak_save() -> Result<(), Box<dyn Error>> {
         let mut pak = Pak::new();
-        pak.add_file(PakFileEntry::new("test.txt".to_string(), 12+64, "Hello World".as_bytes().to_vec()))
-            .unwrap();
+        pak.add_file(PakFileEntry::new(
+            "test.txt".to_string(),
+            12 + 64,
+            "Hello World".as_bytes().to_vec(),
+        ))
+        .unwrap();
         pak.save("test.pak".to_string())
+    }
+
+    #[test]
+    fn pak_save_and_load() -> Result<(), Box<dyn Error>> {
+        let test_string = "Hello World".as_bytes().to_vec();
+        let test_file = "test.pak";
+
+        let mut pak = Pak::new();
+        pak.add_file(PakFileEntry::new(
+            "test.txt".to_string(),
+            12 + 64,
+            test_string.clone(),
+        ))?;
+        pak.save(test_file.to_string())?;
+
+        let pak = Pak::from_file(test_file.to_string())?;
+        let f = pak
+            .files
+            .iter()
+            .find(|f| f.name == "test.txt")
+            .ok_or_else(|| {
+                Box::new(PakFileError {
+                    msg: "File not found after save/load".to_string(),
+                }) as Box<dyn Error>
+            })?;
+
+        assert_eq!(*f.get_data(), test_string);
+
+        std::fs::remove_file(test_file)?;
+        Ok(())
     }
 }
