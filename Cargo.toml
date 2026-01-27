@@ -1,16 +1,44 @@
 [package]
 name = "rustpak"
 version = "0.1.1"
-authors = ["Sophie Luna Schumann <me@luna.vg>"]
+authors = ["Sophie Luna Schumann <me@sophie.lgbt>"]
 edition = "2021"
-description = "Rust library/tool to manage GoldSrc .pak files"
-license-file = "LICENSE"
+description = "Rust library and CLI tool for reading and writing GoldSrc .pak archive files"
+license = "MIT"
+readme = "README.md"
 homepage = "https://github.com/SharkyRawr/rustpak"
 repository = "https://github.com/SharkyRawr/rustpak"
-keywords = ["gamedev", "goldsrc"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+documentation = "https://docs.rs/rustpak"
+keywords = [
+    "pak",
+    "goldsrc",
+    "quake",
+    "half-life",
+    "gamedev",
+    "archive",
+    "game-archive",
+    "file-archive",
+]
+categories = [
+    "encoding",
+    "filesystem",
+    "game-development",
+    "parser-implementations",
+]
+rust-version = "1.70"
 
 [dependencies]
 byteorder = "1.4"
-clap = { version = "4.5.54", features = ["derive"] }
+clap = { version = "4.5.54", features = ["derive"], optional = true }
+
+[features]
+default = ["cli"]
+cli = ["clap"]
+
+[[bin]]
+name = "rustpak"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[package.metadata.docs.rs]
+all-features = true
