@@ -12,12 +12,9 @@ documentation = "https://docs.rs/rustpak"
 keywords = [
     "pak",
     "goldsrc",
-    "quake",
     "half-life",
     "gamedev",
     "archive",
-    "game-archive",
-    "file-archive",
 ]
 categories = [
     "encoding",
