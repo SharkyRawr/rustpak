@@ -21,7 +21,6 @@
 //! pak.save("data_modified.pak".to_string()).unwrap();
 //! ```
 
-extern crate byteorder;
 use std::{
     borrow::Borrow,
     error::Error,
@@ -37,7 +36,6 @@ use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
 /// The header is always 12 bytes and contains magic identifier,
 /// offset to the file table, and size of the file table.
 #[derive(Debug)]
-#[repr(C)]
 pub struct PakHeader {
     /// Should be "PACK" (not null-terminated).
     pub id: String,
@@ -108,7 +106,6 @@ impl PakHeader {
 /// actual file data. Entries in the file table are always 64 bytes,
 /// with the name padded to 56 bytes with null terminators.
 #[derive(Debug)]
-#[repr(C)]
 pub struct PakFileEntry {
     /// 56 byte null-terminated string including path.
     /// Example: "maps/e1m1.bsp"
@@ -292,7 +289,6 @@ impl Pak {
     ///
     /// Returns a Pak with empty path, default header, and no files.
     #[allow(dead_code)]
-    #[no_mangle]
     #[must_use]
     pub fn new() -> Pak {
         Pak {
@@ -312,7 +308,6 @@ impl Pak {
     ///
     /// Returns an error if the file doesn't exist, can't be read,
     /// or has an invalid format
-    #[no_mangle]
     pub fn from_file(path: String) -> Result<Pak, Box<dyn Error>> {
         let bytes = std::fs::read(&path)?;
         let pakheader = PakHeader::from_u8(&bytes)?;
@@ -350,7 +345,6 @@ impl Pak {
     ///
     /// Returns an error if a file with the same name already exists
     #[allow(dead_code)]
-    #[no_mangle]
     pub fn add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
         if self.files.iter().any(|f| f.name.eq(&file.name)) {
             Err(Box::new(PakFileError {
@@ -372,7 +366,6 @@ impl Pak {
     ///
     /// Returns an error if the file is not found
     #[allow(dead_code)]
-    #[no_mangle]
     pub fn remove_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
         if let Some(p) = self.files.iter().position(|p| p.name.eq(&filename)) {
             self.files.remove(p);
@@ -403,7 +396,6 @@ impl Pak {
     ///
     /// Panics if the directory size exceeds `u32::MAX`
     #[allow(dead_code)]
-    #[no_mangle]
     pub fn save(&self, filename: String) -> Result<(), Box<dyn Error>> {
         let mut hdr = PakHeader::new();
         hdr.offset = 12;
@@ -498,7 +490,6 @@ impl std::fmt::Display for Pak {
 ///
 /// Used to report errors during file loading, saving, and manipulation.
 #[derive(Debug, Clone)]
-#[repr(C)]
 pub struct PakFileError {
     /// Error message describing what went wrong
     pub msg: String,
