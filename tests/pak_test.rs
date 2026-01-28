@@ -82,7 +82,7 @@ mod tests {
         pak.add_file(PakFileEntry::new(
             "test.txt".to_string(),
             12 + 64,
-            vec![b'H', b'i'],
+            &[b'H', b'i'],
         ))?;
 
         assert_eq!(pak.files.len(), 1, "Should have 1 file");
@@ -96,8 +96,8 @@ mod tests {
     #[test]
     fn pak_add_duplicate_file() -> Result<(), Box<dyn Error>> {
         let mut pak = Pak::new();
-        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, vec![b'H']))?;
-        let result = pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, vec![b'H']));
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, &[b'H']))?;
+        let result = pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, &[b'H']));
 
         if result.is_err() {
             Ok(())
@@ -111,10 +111,10 @@ mod tests {
     #[test]
     fn pak_delete_file_and_verify_structure() -> Result<(), Box<dyn Error>> {
         let mut pak = Pak::new();
-        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, vec![b'H']))?;
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, &[b'H']))?;
         assert_eq!(pak.files.len(), 1);
 
-        pak.remove_file("test.txt".to_string())?;
+        pak.remove_file("test.txt")?;
         assert_eq!(pak.files.len(), 0, "File should be removed");
 
         Ok(())
@@ -124,9 +124,9 @@ mod tests {
     #[should_panic]
     fn pak_delete_file_nonexisting() {
         let mut pak = Pak::new();
-        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, vec![b'H']))
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, &[b'H']))
             .unwrap();
-        pak.remove_file("doesnotexist.txt".to_string()).unwrap();
+        pak.remove_file("doesnotexist.txt").unwrap();
     }
 
     #[test]
@@ -137,7 +137,7 @@ mod tests {
         pak.add_file(PakFileEntry::new(
             "test.txt".to_string(),
             12 + 64,
-            "Hello World".as_bytes().to_vec(),
+            "Hello World".as_bytes(),
         ))?;
         pak.save(test_file.to_string())?;
 
@@ -164,7 +164,7 @@ mod tests {
         pak.add_file(PakFileEntry::new(
             "test.txt".to_string(),
             12 + 64,
-            test_string.clone(),
+            &test_string,
         ))?;
         pak.save(test_file.to_string())?;
 
@@ -199,17 +199,17 @@ mod tests {
         pak.add_file(PakFileEntry::new(
             "file1.txt".to_string(),
             12 + (3 * 64),
-            data1.clone(),
+            &data1,
         ))?;
         pak.add_file(PakFileEntry::new(
             "file2.txt".to_string(),
             12 + (3 * 64) + data1.len() as u32,
-            data2.clone(),
+            &data2,
         ))?;
         pak.add_file(PakFileEntry::new(
             "file3.txt".to_string(),
             12 + (3 * 64) + data1.len() as u32 + data2.len() as u32,
-            data3.clone(),
+            &data3,
         ))?;
 
         pak.save(test_file.to_string())?;
@@ -239,7 +239,7 @@ mod tests {
         pak.add_file(PakFileEntry::new(
             "binary.dat".to_string(),
             12 + 64,
-            original_data.clone(),
+            &original_data,
         ))?;
 
         pak.save(test_file.to_string())?;
@@ -265,7 +265,7 @@ mod tests {
         pak.add_file(PakFileEntry::new(
             "test.txt".to_string(),
             12 + 64,
-            "Test".as_bytes().to_vec(),
+            "Test".as_bytes(),
         ))?;
 
         pak.save(test_file.to_string())?;

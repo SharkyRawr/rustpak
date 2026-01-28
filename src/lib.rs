@@ -1,7 +1,7 @@
-//! Rustpak - A library for reading and writing GoldSrc .pak archive files
+//! Rustpak - A library for reading and writing `GoldSrc` .pak archive files
 //!
 //! This library provides functionality to work with .pak files used by
-//! Quake, Half-Life, and other GoldSrc engine games. The .pak format
+//! Quake, Half-Life, and other `GoldSrc` engine games. The .pak format
 //! is a simple archive format containing a header, a file table, and file data.
 //!
 //! # Basic Usage
@@ -54,9 +54,10 @@ impl Default for PakHeader {
 }
 
 impl PakHeader {
-    /// Creates a new PakHeader with default values
+    /// Creates a new `PakHeader` with default values
     ///
     /// Returns a header with "PACK" magic and zeroed offset/size.
+    #[must_use]
     pub fn new() -> PakHeader {
         PakHeader {
             id: "PACK".to_string(),
@@ -65,7 +66,7 @@ impl PakHeader {
         }
     }
 
-    /// Parses a PakHeader from a byte slice
+    /// Parses a `PakHeader` from a byte slice
     ///
     /// # Arguments
     ///
@@ -74,6 +75,7 @@ impl PakHeader {
     /// # Panics
     ///
     /// Panics if the buffer is too short or contains invalid UTF-8 for the magic bytes
+    #[must_use]
     pub fn from_u8(buf: &[u8]) -> PakHeader {
         PakHeader {
             id: String::from_utf8(buf[0..4].to_vec()).unwrap(),
@@ -120,7 +122,7 @@ pub struct PakFileEntry {
 }
 
 impl PakFileEntry {
-    /// Parses a PakFileEntry from header buffer and full file data
+    /// Parses a `PakFileEntry` from header buffer and full file data
     ///
     /// # Arguments
     ///
@@ -130,6 +132,7 @@ impl PakFileEntry {
     /// # Panics
     ///
     /// Panics if buffer sizes are insufficient or data is out of bounds
+    #[must_use]
     pub fn from_u8(header_buf: &[u8], file_buf: &[u8]) -> PakFileEntry {
         let namebuf = header_buf[0..56].to_vec();
 
@@ -163,14 +166,18 @@ impl PakFileEntry {
     /// # Errors
     ///
     /// Returns an error if file operations fail
-    pub fn save_to(&self, path: String, with_full_path: bool) -> Result<String, std::io::Error> {
+    ///
+    /// # Panics
+    ///
+    /// Panics if the path has no parent directory or if the filename cannot be converted to UTF-8
+    pub fn save_to(&self, path: &str, with_full_path: bool) -> Result<String, std::io::Error> {
         let data: &Vec<u8> = self.data.borrow();
         let mut path = path::Path::new(&path);
 
         if with_full_path {
             fs::create_dir_all(path.parent().unwrap())?;
         } else {
-            path = path::Path::new(path.file_name().unwrap().to_str().unwrap())
+            path = path::Path::new(path.file_name().unwrap().to_str().unwrap());
         }
 
         std::fs::write(path, data)?;
@@ -178,23 +185,29 @@ impl PakFileEntry {
     }
 
     /// Returns a reference to the file's raw data
+    #[must_use]
     pub fn get_data(&self) -> &Vec<u8> {
         &self.data
     }
 
-    /// Creates a new PakFileEntry with the given parameters
+    /// Creates a new `PakFileEntry` with the given parameters
     ///
     /// # Arguments
     ///
     /// * `name` - The file name/path (will be stored in file table)
     /// * `offset` - Byte offset within the .pak file where data will be stored
     /// * `data` - The actual file contents
+    ///
+    /// # Panics
+    ///
+    /// Panics if the data size exceeds `u32::MAX`
     #[allow(dead_code)]
-    pub fn new(name: String, offset: u32, data: Vec<u8>) -> PakFileEntry {
+    #[must_use]
+    pub fn new(name: String, offset: u32, data: &[u8]) -> PakFileEntry {
         PakFileEntry {
             name,
             offset,
-            size: data.len() as u32,
+            size: u32::try_from(data.len()).expect("file size exceeds u32::MAX"),
             data: data.to_vec(),
         }
     }
@@ -252,9 +265,10 @@ impl Pak {
     /// Returns a Pak with empty path, default header, and no files.
     #[allow(dead_code)]
     #[no_mangle]
+    #[must_use]
     pub fn new() -> Pak {
         Pak {
-            pak_path: "".to_string(),
+            pak_path: String::new(),
             header: PakHeader::new(),
             files: Vec::new(),
         }
@@ -302,7 +316,7 @@ impl Pak {
     ///
     /// # Arguments
     ///
-    /// * `file` - The PakFileEntry to add
+    /// * `file` - The `PakFileEntry` to add
     ///
     /// # Errors
     ///
@@ -310,14 +324,13 @@ impl Pak {
     #[allow(dead_code)]
     #[no_mangle]
     pub fn add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
-        match self.files.iter().find(|f| f.name.eq(&file.name)) {
-            Some(_) => Err(Box::new(PakFileError {
+        if self.files.iter().any(|f| f.name.eq(&file.name)) {
+            Err(Box::new(PakFileError {
                 msg: "File already exists".to_string(),
-            })),
-            None => {
-                self.files.push(file);
-                Ok(self)
-            }
+            }))
+        } else {
+            self.files.push(file);
+            Ok(self)
         }
     }
 
@@ -332,7 +345,7 @@ impl Pak {
     /// Returns an error if the file is not found
     #[allow(dead_code)]
     #[no_mangle]
-    pub fn remove_file(&mut self, filename: String) -> Result<(), Box<dyn Error>> {
+    pub fn remove_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
         if let Some(p) = self.files.iter().position(|p| p.name.eq(&filename)) {
             self.files.remove(p);
             Ok(())
@@ -357,22 +370,26 @@ impl Pak {
     /// # Errors
     ///
     /// Returns an error if file creation or writing fails
+    ///
+    /// # Panics
+    ///
+    /// Panics if the directory size exceeds `u32::MAX`
     #[allow(dead_code)]
     #[no_mangle]
     pub fn save(&self, filename: String) -> Result<(), Box<dyn Error>> {
         let mut hdr = PakHeader::new();
         hdr.offset = 12;
-        hdr.size = (self.files.len() * 64) as u32;
+        hdr.size = u32::try_from(self.files.len() * 64).expect("directory size exceeds u32::MAX");
 
         let mut f = File::create(filename)?;
         hdr.write_to(&f)?;
 
-        for file in self.files.iter() {
+        for file in &self.files {
             file.write_to(&f)?;
         }
 
-        for file in self.files.iter() {
-            f.seek(SeekFrom::Start(file.offset as u64))?;
+        for file in &self.files {
+            f.seek(SeekFrom::Start(u64::from(file.offset)))?;
             io::Write::write(&mut f, file.data.as_slice())?;
         }
 
@@ -393,11 +410,29 @@ impl Pak {
     ///
     /// Returns an error if the input file doesn't exist or can't be read,
     /// or if a file with that name already exists in the archive
+    ///
+    /// # Panics
+    ///
+    /// Panics if opening the pak file fails, reading file metadata fails,
+    /// reading file data fails, or if adding the file to the archive fails
     pub fn append_file(
         &mut self,
         infilepath: String,
-        pakfilepath: String,
+        pakfilepath: &str,
     ) -> Result<(), Box<dyn Error>> {
+        fn get_last_offset(path: String) -> u32 {
+            let f = File::open(path).unwrap();
+            u32::try_from(f.metadata().unwrap().len()).expect("file size exceeds u32::MAX")
+        }
+
+        fn get_file_data(path: String) -> Vec<u8> {
+            let mut f = File::open(path).unwrap();
+            let mut vec: Vec<u8> = Vec::new();
+            let buf: &mut Vec<u8> = vec.as_mut();
+            f.read_to_end(buf).unwrap();
+            buf.clone()
+        }
+
         let newfilepath = path::Path::new(&infilepath);
         if !newfilepath.exists() {
             return Err(Box::new(PakFileError {
@@ -405,23 +440,10 @@ impl Pak {
             }));
         }
 
-        fn get_last_offset(path: String) -> u32 {
-            let f = File::open(path).unwrap();
-            f.metadata().unwrap().len() as u32
-        }
-
         let last_offset = get_last_offset(self.pak_path.clone());
-
-        fn get_file_data(path: String) -> Vec<u8> {
-            let mut f = File::open(path).unwrap();
-            let mut vec: Vec<u8> = Vec::new();
-            let buf: &mut Vec<u8> = vec.as_mut();
-            f.read_to_end(buf).unwrap();
-            buf.to_vec()
-        }
         let data = get_file_data(infilepath);
 
-        let fe = PakFileEntry::new(pakfilepath.to_string(), last_offset, data);
+        let fe = PakFileEntry::new(pakfilepath.to_string(), last_offset, &data);
         self.add_file(fe).unwrap();
         Ok(())
     }

@@ -46,9 +46,9 @@ fn main() {
 
     match cli.command {
         Commands::List { pakfile } => match list_pak_file(pakfile) {
-            Ok(_) => {}
+            Ok(()) => {}
             Err(e) => {
-                eprintln!("Pak file error: {}", e)
+                eprintln!("Pak file error: {e}");
             }
         },
         Commands::Extract {
@@ -58,30 +58,30 @@ fn main() {
             recursive,
         } => {
             let outfile = outfile.unwrap_or_else(|| path.clone());
-            match extract_file_from_pak_to_path(pakfile, path.clone(), outfile, recursive) {
+            match extract_file_from_pak_to_path(pakfile, &path, &outfile, recursive) {
                 Ok(finalpath) => {
-                    eprintln!("Extracted: '{}' to '{}'", &path, finalpath)
+                    eprintln!("Extracted: '{}' to '{}'", &path, finalpath);
                 }
                 Err(e) => {
-                    eprintln!("Pak file error: {}", e)
+                    eprintln!("Pak file error: {e}");
                 }
             }
         }
         Commands::Append { pakfile, path } => {
-            add_file_to_pak(pakfile, path).unwrap();
+            add_file_to_pak(pakfile, &path).unwrap();
         }
     }
 }
 
 fn extract_file_from_pak_to_path(
     pakfile: String,
-    path: String,
-    outfile: String,
+    path: &str,
+    outfile: &str,
     recursive: bool,
 ) -> Result<String, Box<dyn Error>> {
     let pak = Pak::from_file(pakfile)?;
     match pak.files.iter().find(|pf| pf.name.eq(&path)) {
-        Some(pakfile) => match pakfile.save_to(outfile.to_string(), recursive) {
+        Some(pakfile) => match pakfile.save_to(outfile, recursive) {
             Ok(path) => Ok(path),
             Err(e) => Err(Box::new(e)),
         },
@@ -97,8 +97,8 @@ fn list_pak_file(pakfile: String) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn add_file_to_pak(pakpath: String, filepath: String) -> Result<(), Box<dyn Error>> {
+fn add_file_to_pak(pakpath: String, filepath: &str) -> Result<(), Box<dyn Error>> {
     let mut pak = Pak::from_file(pakpath.clone())?;
-    pak.append_file(filepath.clone(), filepath)?;
+    pak.append_file(filepath.to_string(), filepath)?;
     pak.save(pakpath)
 }
