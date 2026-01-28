@@ -76,12 +76,12 @@ impl PakHeader {
     ///
     /// Panics if the buffer is too short or contains invalid UTF-8 for the magic bytes
     #[must_use]
-    pub fn from_u8(buf: &[u8]) -> PakHeader {
-        PakHeader {
-            id: String::from_utf8(buf[0..4].to_vec()).unwrap(),
+    pub fn from_u8(buf: &[u8]) -> Result<PakHeader, Box<dyn Error>> {
+        Ok(PakHeader {
+            id: String::from_utf8(buf[0..4].to_vec())?,
             offset: LittleEndian::read_u32(&buf[4..8]),
             size: LittleEndian::read_u32(&buf[8..12]),
-        }
+        })
     }
 
     /// Writes the header to a writer
@@ -133,7 +133,7 @@ impl PakFileEntry {
     ///
     /// Panics if buffer sizes are insufficient or data is out of bounds
     #[must_use]
-    pub fn from_u8(header_buf: &[u8], file_buf: &[u8]) -> PakFileEntry {
+    pub fn from_u8(header_buf: &[u8], file_buf: &[u8]) -> Result<PakFileEntry, Box<dyn Error>> {
         let namebuf = header_buf[0..56].to_vec();
 
         let nul_range_end = namebuf
@@ -144,15 +144,14 @@ impl PakFileEntry {
         let offset = LittleEndian::read_u32(&header_buf[56..60]);
         let size = LittleEndian::read_u32(&header_buf[60..64]);
 
-        PakFileEntry {
-            name: String::from_utf8(header_buf[0..nul_range_end].to_vec())
-                .unwrap()
+        Ok(PakFileEntry {
+            name: String::from_utf8(header_buf[0..nul_range_end].to_vec())?
                 .trim()
                 .to_string(),
             offset,
             size,
             data: (file_buf[offset as usize..(offset + size) as usize]).to_vec(),
-        }
+        })
     }
 
     /// Extracts this file's contents to disk
@@ -175,13 +174,42 @@ impl PakFileEntry {
         let mut path = path::Path::new(&path);
 
         if with_full_path {
-            fs::create_dir_all(path.parent().unwrap())?;
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            } else {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "Path has no parent directory",
+                ));
+            }
         } else {
-            path = path::Path::new(path.file_name().unwrap().to_str().unwrap());
+            if let Some(file_name) = path.file_name() {
+                if let Some(file_str) = file_name.to_str() {
+                    path = path::Path::new(file_str);
+                } else {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        "Filename contains invalid UTF-8 characters",
+                    ));
+                }
+            } else {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "Path has no filename",
+                ));
+            }
         }
 
         std::fs::write(path, data)?;
-        Ok(path.to_str().unwrap().to_string())
+        Ok(path
+            .to_str()
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "Path contains invalid UTF-8 characters",
+                )
+            })?
+            .to_string())
     }
 
     /// Returns a reference to the file's raw data
@@ -287,7 +315,7 @@ impl Pak {
     #[no_mangle]
     pub fn from_file(path: String) -> Result<Pak, Box<dyn Error>> {
         let bytes = std::fs::read(&path)?;
-        let pakheader = PakHeader::from_u8(&bytes);
+        let pakheader = PakHeader::from_u8(&bytes)?;
         let num_files = pakheader.size / 64;
 
         let file_table_offset = pakheader.offset;
@@ -299,7 +327,7 @@ impl Pak {
                 &bytes[(file_table_offset + my_offset) as usize
                     ..(file_table_offset + my_offset + 64) as usize],
                 &bytes,
-            );
+            )?;
             pakfiles.push(file_entry);
 
             my_offset += 64;
@@ -420,17 +448,23 @@ impl Pak {
         infilepath: String,
         pakfilepath: &str,
     ) -> Result<(), Box<dyn Error>> {
-        fn get_last_offset(path: String) -> u32 {
-            let f = File::open(path).unwrap();
-            u32::try_from(f.metadata().unwrap().len()).expect("file size exceeds u32::MAX")
+        fn get_last_offset(path: String) -> Result<u32, Box<dyn Error>> {
+            let f = File::open(path)?;
+            let metadata = f.metadata()?;
+            let len = metadata.len();
+            u32::try_from(len).map_err(|_| {
+                Box::new(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "file size exceeds u32::MAX",
+                )) as Box<dyn Error>
+            })
         }
 
-        fn get_file_data(path: String) -> Vec<u8> {
-            let mut f = File::open(path).unwrap();
+        fn get_file_data(path: String) -> Result<Vec<u8>, Box<dyn Error>> {
+            let mut f = File::open(path)?;
             let mut vec: Vec<u8> = Vec::new();
-            let buf: &mut Vec<u8> = vec.as_mut();
-            f.read_to_end(buf).unwrap();
-            buf.clone()
+            f.read_to_end(&mut vec)?;
+            Ok(vec)
         }
 
         let newfilepath = path::Path::new(&infilepath);
@@ -440,11 +474,11 @@ impl Pak {
             }));
         }
 
-        let last_offset = get_last_offset(self.pak_path.clone());
-        let data = get_file_data(infilepath);
+        let last_offset = get_last_offset(self.pak_path.clone())?;
+        let data = get_file_data(infilepath)?;
 
         let fe = PakFileEntry::new(pakfilepath.to_string(), last_offset, &data);
-        self.add_file(fe).unwrap();
+        self.add_file(fe)?;
         Ok(())
     }
 }
