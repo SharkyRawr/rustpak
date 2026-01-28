@@ -67,9 +67,12 @@ fn main() {
                 }
             }
         }
-        Commands::Append { pakfile, path } => {
-            add_file_to_pak(pakfile, &path).unwrap();
-        }
+        Commands::Append { pakfile, path } => match add_file_to_pak(pakfile, &path) {
+            Ok(()) => {}
+            Err(e) => {
+                eprintln!("Pak file error: {e}");
+            }
+        },
     }
 }
 
