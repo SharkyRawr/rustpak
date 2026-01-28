@@ -5,7 +5,7 @@ use rustpak::Pak;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(version = "0.1")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(author = "Sophie Luna Schumann <me@sophie.lgbt>")]
 #[command(about = "Quake/Half-Life Pak file manipulation utility")]
 struct Cli {
