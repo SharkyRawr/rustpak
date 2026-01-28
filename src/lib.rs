@@ -70,10 +70,10 @@ impl PakHeader {
     ///
     /// * `buf` - A byte slice containing at least 12 bytes of header data
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the buffer is too short or contains invalid UTF-8 for the magic bytes
-    #[must_use]
+    /// Returns an error if the buffer is too short or contains invalid UTF-8 for the magic bytes
+    #[must_use = "the result should be used, as it may contain parsing errors"]
     pub fn from_u8(buf: &[u8]) -> Result<PakHeader, Box<dyn Error>> {
         Ok(PakHeader {
             id: String::from_utf8(buf[0..4].to_vec())?,
@@ -125,10 +125,10 @@ impl PakFileEntry {
     /// * `header_buf` - 64 bytes containing the file entry metadata
     /// * `file_buf` - Full .pak file data to extract file contents from
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if buffer sizes are insufficient or data is out of bounds
-    #[must_use]
+    /// Returns an error if buffer sizes are insufficient or data is out of bounds
+    #[must_use = "the result should be used, as it may contain parsing errors"]
     pub fn from_u8(header_buf: &[u8], file_buf: &[u8]) -> Result<PakFileEntry, Box<dyn Error>> {
         let namebuf = header_buf[0..56].to_vec();
 
@@ -178,22 +178,20 @@ impl PakFileEntry {
                     "Path has no parent directory",
                 ));
             }
-        } else {
-            if let Some(file_name) = path.file_name() {
-                if let Some(file_str) = file_name.to_str() {
-                    path = path::Path::new(file_str);
-                } else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        "Filename contains invalid UTF-8 characters",
-                    ));
-                }
+        } else if let Some(file_name) = path.file_name() {
+            if let Some(file_str) = file_name.to_str() {
+                path = path::Path::new(file_str);
             } else {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
-                    "Path has no filename",
+                    "Filename contains invalid UTF-8 characters",
                 ));
             }
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Path has no filename",
+            ));
         }
 
         std::fs::write(path, data)?;

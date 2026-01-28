@@ -42,27 +42,25 @@ mod tests {
             "Size field should equal file count * 64"
         );
 
-        cursor.set_position(offset as u64);
+        cursor.set_position(u64::from(offset));
         for i in 0..expected_file_count {
             let mut name_buf = vec![0u8; 56];
             cursor.read_exact(&mut name_buf)?;
 
             let nul_pos = name_buf.iter().position(|&c| c == b'\0').unwrap_or(56);
             let name = String::from_utf8_lossy(&name_buf[..nul_pos]);
-            assert!(!name.is_empty(), "File {} should have a valid name", i);
+            assert!(!name.is_empty(), "File {i} should have a valid name");
 
             let file_offset = cursor.read_u32::<LittleEndian>()?;
             let file_size = cursor.read_u32::<LittleEndian>()?;
 
             assert!(
                 file_offset >= 12,
-                "File offset {} should be after header (>= 12)",
-                i
+                "File offset {i} should be after header (>= 12)"
             );
             assert!(
                 file_offset as usize + file_size as usize <= data.len(),
-                "File {} data should be within file bounds",
-                i
+                "File {i} data should be within file bounds"
             );
         }
 
@@ -79,11 +77,7 @@ mod tests {
     #[test]
     fn pak_add_file_and_verify_structure() -> Result<(), Box<dyn Error>> {
         let mut pak = Pak::new();
-        pak.add_file(PakFileEntry::new(
-            "test.txt".to_string(),
-            12 + 64,
-            &[b'H', b'i'],
-        ))?;
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 12 + 64, b"Hi"))?;
 
         assert_eq!(pak.files.len(), 1, "Should have 1 file");
         assert_eq!(pak.files[0].name, "test.txt");
@@ -96,8 +90,8 @@ mod tests {
     #[test]
     fn pak_add_duplicate_file() -> Result<(), Box<dyn Error>> {
         let mut pak = Pak::new();
-        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, &[b'H']))?;
-        let result = pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, &[b'H']));
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, b"H"))?;
+        let result = pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, b"H"));
 
         if result.is_err() {
             Ok(())
@@ -111,7 +105,7 @@ mod tests {
     #[test]
     fn pak_delete_file_and_verify_structure() -> Result<(), Box<dyn Error>> {
         let mut pak = Pak::new();
-        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, &[b'H']))?;
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, b"H"))?;
         assert_eq!(pak.files.len(), 1);
 
         pak.remove_file("test.txt")?;
@@ -121,10 +115,10 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "file entry not found")]
     fn pak_delete_file_nonexisting() {
         let mut pak = Pak::new();
-        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, &[b'H']))
+        pak.add_file(PakFileEntry::new("test.txt".to_string(), 0, b"H"))
             .unwrap();
         pak.remove_file("doesnotexist.txt").unwrap();
     }
@@ -203,12 +197,14 @@ mod tests {
         ))?;
         pak.add_file(PakFileEntry::new(
             "file2.txt".to_string(),
-            12 + (3 * 64) + data1.len() as u32,
+            12 + (3 * 64) + u32::try_from(data1.len()).unwrap(),
             &data2,
         ))?;
         pak.add_file(PakFileEntry::new(
             "file3.txt".to_string(),
-            12 + (3 * 64) + data1.len() as u32 + data2.len() as u32,
+            12 + (3 * 64)
+                + u32::try_from(data1.len()).unwrap()
+                + u32::try_from(data2.len()).unwrap(),
             &data3,
         ))?;
 
