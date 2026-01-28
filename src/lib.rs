@@ -91,7 +91,6 @@ impl PakHeader {
     /// # Errors
     ///
     /// Returns an error if writing to the writer fails
-    #[allow(dead_code)]
     pub fn write_to<W: io::Write>(&self, mut writer: W) -> Result<(), Box<dyn Error>> {
         writer.write_all(self.id.as_bytes())?;
         writer.write_u32::<LittleEndian>(self.offset)?;
@@ -226,7 +225,6 @@ impl PakFileEntry {
     /// # Panics
     ///
     /// Panics if the data size exceeds `u32::MAX`
-    #[allow(dead_code)]
     #[must_use]
     pub fn new(name: String, offset: u32, data: &[u8]) -> PakFileEntry {
         PakFileEntry {
@@ -249,10 +247,9 @@ impl PakFileEntry {
     /// # Errors
     ///
     /// Returns an error if writing fails
-    #[allow(dead_code)]
     pub fn write_to<W: io::Write>(&self, mut writer: W) -> Result<(), Box<dyn Error>> {
         let mut buf = self.name.as_bytes().to_vec();
-        //buf.fill_with(self.name.as_bytes());
+
         while buf.len() < 56 {
             buf.push(0_u8);
         }
@@ -288,7 +285,6 @@ impl Pak {
     /// Creates a new empty Pak archive
     ///
     /// Returns a Pak with empty path, default header, and no files.
-    #[allow(dead_code)]
     #[must_use]
     pub fn new() -> Pak {
         Pak {
@@ -344,7 +340,6 @@ impl Pak {
     /// # Errors
     ///
     /// Returns an error if a file with the same name already exists
-    #[allow(dead_code)]
     pub fn add_file(&mut self, file: PakFileEntry) -> Result<&mut Pak, Box<dyn Error>> {
         if self.files.iter().any(|f| f.name.eq(&file.name)) {
             Err(Box::new(PakFileError {
@@ -365,7 +360,6 @@ impl Pak {
     /// # Errors
     ///
     /// Returns an error if the file is not found
-    #[allow(dead_code)]
     pub fn remove_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
         if let Some(p) = self.files.iter().position(|p| p.name.eq(&filename)) {
             self.files.remove(p);
@@ -395,7 +389,6 @@ impl Pak {
     /// # Panics
     ///
     /// Panics if the directory size exceeds `u32::MAX`
-    #[allow(dead_code)]
     pub fn save(&self, filename: String) -> Result<(), Box<dyn Error>> {
         let mut hdr = PakHeader::new();
         hdr.offset = 12;
